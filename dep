@@ -7,6 +7,16 @@ Main Game
 -------------------------------------------------------------------
 1.     Dragonsounds - ReplicatedStorage > Sounds > FruitSSS > Dragon(Delete) > Replace(Dragonsounds)
 2.     NoCDfruit - Search > MaininSPS > Scrolldown(Line 254) > Replace(UserID)
+3.     Welcomebadge - (Workspace) 
+BadgetId = 00000000 -- Your badge id here 
+
+game.Players.PlayerAdded:connect(function(p)
+ wait(.5)
+ b = game:GetService("BadgeService")
+ b:AwardBadge(p.userId,BadgetId)
+end)
+4.     Gsound - Workspace > Added(Sound) > Rename("Sound")
+game.Workspace.Sound:Play()
 -------------------------------------------------------------------
 1.     https://www.mediafire.com/file/1tzjxwoofv4241z/place+621129760+KAT.rbxlx/file          - Kat
 2.     https://www.mediafire.com/file/lg744gjaddl23ad/place+10598963932+GOJO+BOSS+FREE+GOJO+FRUIT+Cat+Piece.rbxlx/file
