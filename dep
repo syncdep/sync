@@ -21,6 +21,161 @@ game.Workspace.Sound:Play()
 6.     PrisonEscape - https://www.roblox.com/games/17191992310/Prison-Escape
 7.     Kamui - https://www.mediafire.com/file/qtsglrwl9d6i5ue/RipKamui.rbxm/file
 8.     COD - https://www.mediafire.com/file/dnp5aiwsca1dq5s/COD.rbxl/file
+9.     Freecam - ServerScriptService > Script > Rename(AdminFreecam) > Paste
+-- Freecam Script (Supports Desktop + Mobile)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local Camera = workspace.CurrentCamera
+
+-- Configuration
+local MOVEMENT_SPEED = 5
+local MOUSE_SENSITIVITY = 3
+local TOUCH_SENSITIVITY = 0.5
+
+-- Admin Check (Modify this according to your admin system)
+local function IsAdmin(player)
+    -- Example: Check against a list of admin usernames
+    local admins = {"usernamex"}
+    return table.find(admins, player.Name) ~= nil
+end
+
+-- Freecam System
+local freecamEnabled = false
+local startCFrame
+local input = {}
+local touchControls = {}
+local mobileGui
+
+local function EnableFreecam(player)
+    if freecamEnabled then return end
+    freecamEnabled = true
+    
+    -- Hide character
+    local character = player.Character
+    if character then
+        character:WaitForChild("HumanoidRootPart").Anchored = true
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+            end
+        end
+    end
+    
+    -- Camera setup
+    startCFrame = Camera.CFrame
+    Camera.CameraType = Enum.CameraType.Scriptable
+    
+    -- Mobile GUI
+    if UserInputService.TouchEnabled then
+        mobileGui = Instance.new("ScreenGui")
+        mobileGui.Name = "FreecamMobileControls"
+        
+        -- Movement Joystick
+        local moveFrame = Instance.new("Frame", mobileGui)
+        moveFrame.Size = UDim2.new(0.5, 0, 1, 0)
+        moveFrame.BackgroundTransparency = 1
+        moveFrame.Name = "MoveJoystick"
+        
+        -- Look Joystick
+        local lookFrame = Instance.new("Frame", mobileGui)
+        lookFrame.Size = UDim2.new(0.5, 0, 1, 0)
+        lookFrame.Position = UDim2.new(0.5, 0, 0,  0)
+        lookFrame.BackgroundTransparency = 1
+        lookFrame.Name = "LookJoystick"
+        
+        mobileGui.Parent = StarterGui
+    end
+    
+    -- Input listeners
+    UserInputService.InputChanged:Connect(function(inputObject)
+        if freecamEnabled then
+            if inputObject.UserInputType == Enum.UserInputType.MouseMovement then
+                input.mouseDelta = inputObject.Position - input.lastMousePosition
+                input.lastMousePosition = inputObject.Position
+            elseif inputObject.UserInputType == Enum.UserInputType.Touch then
+                local touch = inputObject
+                if touch and touch.UserInputState == Enum.UserInputState.Begin then
+                    if touch.Position.X < workspace.CurrentCamera.ViewportSize.X / 2 then
+                        input.touchStart = touch.Position
+                    else
+                        input.touchLookStart = touch.Position
+                    end
+                elseif touch.UserInputState == Enum.UserInputState.Change then
+                    if input.touchStart then
+                        local delta = touch.Position - input.touchStart
+                        input.moveDirection = Vector3.new(delta.X * TOUCH_SENSITIVITY, 0, delta.Y * TOUCH_SENSITIVITY)
+                    end
+                    if input.touchLookStart then
+                        local lookDelta = touch.Position - input.touchLookStart
+                        input.lookDirection = Vector2.new(lookDelta.X * MOUSE_SENSITIVITY, lookDelta.Y * MOUSE_SENSITIVITY)
+                    end
+                elseif touch.UserInputState == Enum.UserInputState.End then
+                    input.touchStart = nil
+                    input.touchLookStart = nil
+                end
+            end
+        end
+    end)
+    
+    -- Update loop
+    RunService.RenderStepped:Connect(function()
+        if freecamEnabled then
+            -- Update camera position
+            local moveDirection = input.moveDirection or Vector3.new(0, 0, 0)
+            local lookDirection = input.lookDirection or Vector2.new(0, 0)
+            
+            local cameraCFrame = Camera.CFrame
+            cameraCFrame = cameraCFrame * CFrame.new(moveDirection * MOVEMENT_SPEED * RunService.RenderStepped:Wait())
+            cameraCFrame = cameraCFrame * CFrame.Angles(0, math.rad(lookDirection.X), 0) * CFrame.Angles(math.rad(lookDirection.Y), 0, 0)
+            Camera.CFrame = cameraCFrame
+            
+            -- Reset input
+            input.moveDirection = Vector3.new(0, 0, 0)
+            input.lookDirection = Vector2.new(0, 0)
+        end
+    end)
+end
+
+local function DisableFreecam(player)
+    if not freecamEnabled then return end
+    freecamEnabled = false
+    
+    -- Restore character
+    local character = player.Character
+    if character then
+        character:WaitForChild("HumanoidRootPart").Anchored = false
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 0
+            end
+        end
+    end
+    
+    -- Restore camera
+    Camera.CameraType = Enum.CameraType.Custom
+    Camera.CFrame = startCFrame
+    
+    -- Destroy mobile GUI
+    if mobileGui then
+        mobileGui:Destroy()
+        mobileGui = nil
+    end
+end
+
+-- Chat command listener
+Players.PlayerAdded:Connect(function(player)
+    player.Chatted:Connect(function(message)
+        if message:lower() == "dex/freecam" and IsAdmin(player) then
+            if freecamEnabled then
+                DisableFreecam(player)
+            else
+                EnableFreecam(player)
+            end
+        end
+    end)
+end)
 -------------------------------------------------------------------------------------------------------------
 1.     https://www.mediafire.com/file/1tzjxwoofv4241z/place+621129760+KAT.rbxlx/file          - Kat
 2.     https://www.mediafire.com/file/lg744gjaddl23ad/place+10598963932+GOJO+BOSS+FREE+GOJO+FRUIT+Cat+Piece.rbxlx/file
