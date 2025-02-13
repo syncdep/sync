@@ -1,1 +1,82 @@
 https://www.mediafire.com/file/ce25suxmb6tkyf2/Archive.zip/file
+
+
+-- Ultra-Secure Admin Executor v4.1 (Roblox Studio Only)
+-- Place in ServerScriptService
+
+local ADMIN_WHITELIST = {123456789} -- Replace with admin UserIds
+local COMMAND_PREFIX = "in/"
+local MAX_ATTEMPTS = 2
+local BAN_REASON = "Unauthorized execution attempts"
+
+local Players = game:GetService("Players")
+local violationCounts = {}
+
+-- Security Layer 1: Whitelist Verification
+local function isAuthorized(player)
+    return table.find(ADMIN_WHITELIST, player.UserId) ~= nil
+end
+
+-- Security Layer 2: Safe Code Execution
+local function executeAdminCode(player, code)
+    -- Create isolated environment
+    local env = getfenv()
+    local sandbox = setmetatable({
+        script = script,
+        require = require,
+        game = game,
+        workspace = workspace,
+        Instance = Instance,
+        loadstring = loadstring,
+        warn = function(...)
+            warn("[ADMIN OUTPUT]", player.Name, ...)
+        end
+    }, {
+        __index = env,
+        __newindex = function(t, k, v)
+            rawset(env, k, v)
+        end
+    })
+
+    -- Compile code
+    local chunk, syntaxError = loadstring(code, "AdminCommand")
+    if not chunk then
+        warn("[SYNTAX ERROR]", player.Name, syntaxError)
+        return
+    end
+
+    -- Execute in sandbox
+    setfenv(chunk, sandbox)
+    local success, runtimeError = pcall(chunk)
+    if not success then
+        warn("[RUNTIME ERROR]", player.Name, runtimeError)
+    end
+end
+
+-- Security Layer 3: Violation System
+local function handleViolation(player)
+    if isAuthorized(player) then return end -- Don't track admins
+    
+    violationCounts[player] = (violationCounts[player] or 0) + 1
+    
+    if violationCounts[player] >= MAX_ATTEMPTS then
+        player:Kick(BAN_REASON)
+        warn("[SECURITY] Banned", player.Name, "Reason:", BAN_REASON)
+    else
+        warn("[SECURITY] Warning", violationCounts[player], "for", player.Name)
+    end
+end
+
+-- Command Handler
+Players.PlayerChatted:Connect(function(_, player, message)
+    if message:sub(1, #COMMAND_PREFIX) == COMMAND_PREFIX then
+        if isAuthorized(player) then
+            local code = message:sub(#COMMAND_PREFIX + 1)
+            executeAdminCode(player, code)
+        else
+            handleViolation(player)
+        end
+    end
+end)
+
+warn("Admin security system initialized")
