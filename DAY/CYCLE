@@ -1,0 +1,148 @@
+## Features Included:
+Real sun/moon orbital movement
+Dynamic lighting/color transitions
+Basic rain system
+Fog effects
+Chat commands
+Auto weather changes
+Time acceleration control
+
+## How to Use:
+Paste into ServerScriptService
+Playtest your game
+Use chat commands:
+/day - Jump to noon
+/night - Jump to midnight
+/rain - Toggle rain
+
+## Customization Tips:
+Adjust Config.TimeScale to change speed
+Modify rain properties in TogglePrecipitation
+Change sun/moon colors in the State initialization
+Adjust fog values in the Heartbeat loop
+
+
+-- AdvancedAllInOneDayNight.lua
+-- Paste in ServerScriptService
+
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+-- Configuration
+local Config = {
+    TimeScale = 60, -- 1 real second = 1 game minute
+    DayLength = 24, -- Game hours in full cycle
+    SunRadius = 1000,
+    MoonRadius = 800,
+    WeatherChangeInterval = 60,
+    FogDensityNight = 0.005,
+    FogDensityRain = 0.01
+}
+
+-- State Management
+local State = {
+    CurrentTime = 8, -- Start at 8 AM
+    IsRaining = false,
+    IsSnowing = false,
+    Sun = Instance.new("Part"),
+    Moon = Instance.new("Part")
+}
+
+-- Setup celestial bodies
+State.Sun.Name = "Sun"
+State.Sun.Anchored = true
+State.Sun.CanCollide = false
+State.Sun.Material = Enum.Material.Neon
+State.Sun.Color = Color3.new(1, 0.8, 0.4)
+State.Sun.Size = Vector3.new(10, 10, 10)
+State.Sun.Parent = workspace
+
+State.Moon.Name = "Moon"
+State.Moon.Anchored = true
+State.Moon.CanCollide = false
+State.Moon.Material = Enum.Material.Neon
+State.Moon.Color = Color3.new(0.9, 0.9, 0.95)
+State.Moon.Size = Vector3.new(8, 8, 8)
+State.Moon.Parent = workspace
+
+-- Celestial movement function
+local function UpdateCelestialPositions()
+    local sunAngle = math.rad((State.CurrentTime/24)*360)
+    local moonAngle = sunAngle + math.pi
+    
+    State.Sun.Position = Vector3.new(
+        math.cos(sunAngle) * Config.SunRadius,
+        200,
+        math.sin(sunAngle) * Config.SunRadius
+    )
+    
+    State.Moon.Position = Vector3.new(
+        math.cos(moonAngle) * Config.MoonRadius,
+        200,
+        math.sin(moonAngle) * Config.MoonRadius
+    )
+    
+    Lighting.ClockTime = State.CurrentTime
+end
+
+-- Weather system
+local function TogglePrecipitation(type, enable)
+    if type == "Rain" then
+        State.IsRaining = enable
+        -- Create rain particles
+        if enable and not workspace:FindFirstChild("Rain") then
+            local rain = Instance.new("ParticleEmitter")
+            rain.Name = "Rain"
+            rain.Size = NumberSequence.new(0.3)
+            rain.Transparency = NumberSequence.new(0.5)
+            rain.Lifetime = NumberRange.new(1)
+            rain.Rate = 500
+            rain.Speed = NumberRange.new(50)
+            rain.Parent = workspace
+        elseif not enable then
+            workspace:FindFirstChild("Rain"):Destroy()
+        end
+    end
+end
+
+-- Time progression
+RunService.Heartbeat:Connect(function(delta)
+    -- Update game time
+    State.CurrentTime = (State.CurrentTime + (delta * Config.TimeScale)) % 24
+    
+    -- Update celestial positions
+    UpdateCelestialPositions()
+    
+    -- Update lighting
+    local nightFactor = math.clamp(1 - math.abs(12 - State.CurrentTime)/6, 0, 1)
+    
+    TweenService:Create(Lighting, TweenInfo.new(1), {
+        Ambient = Color3.new(0.1 * nightFactor, 0.1 * nightFactor, 0.15 * nightFactor),
+        OutdoorAmbient = Color3.new(0.4, 0.4, 0.5) * (1 - nightFactor),
+        FogColor = State.IsRaining and Color3.new(0.3, 0.3, 0.4) or Color3.new(0.8, 0.8, 0.9),
+        FogEnd = State.IsRaining and 500 or 1000
+    }):Play()
+end)
+
+-- Weather changes
+while true do
+    wait(Config.WeatherChangeInterval)
+    if math.random() < 0.3 then  -- 30% chance to change weather
+        TogglePrecipitation("Rain", not State.IsRaining)
+    end
+end
+
+-- Chat commands
+Players.PlayerAdded:Connect(function(player)
+    player.Chatted:Connect(function(message)
+        if message:lower() == "/day" then
+            State.CurrentTime = 12
+        elseif message:lower() == "/night" then
+            State.CurrentTime = 0
+        elseif message:lower() == "/rain" then
+            TogglePrecipitation("Rain", true)
+        end
+    end)
+end)
