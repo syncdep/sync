@@ -1,0 +1,73 @@
+local PLUGIN_NAME = "Instant Animation Converter"
+local SELECTION = game:GetService("Selection")
+local HTTP = game:GetService("HttpService")
+
+-- Lightning-fast setup
+local plugin = plugin
+local toolbar = plugin:CreateToolbar(PLUGIN_NAME)
+local button = toolbar:CreateButton("Convert Now", "Instant animation conversion", "rbxassetid://4458901886")
+
+-- Barebones UI for maximum speed
+local widget = plugin:CreateDockWidgetPluginGui(PLUGIN_NAME, DockWidgetPluginGuiInfo.new(
+    Enum.InitialDockState.Float,
+    false,
+    false,
+    250,
+    80
+))
+widget.Title = PLUGIN_NAME
+
+local ui = Instance.new("Frame")
+ui.BackgroundTransparency = 1
+ui.Size = UDim2.new(1, 0, 1, 0)
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Text = "Ready"
+statusLabel.Size = UDim2.new(1, 0, 0, 20)
+statusLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+local convertButton = Instance.new("TextButton")
+convertButton.Text = "Convert All Animations"
+convertButton.Size = UDim2.new(1, 0, 0, 40)
+
+ui.Parent = widget
+statusLabel.Parent = ui
+convertButton.Parent = ui
+
+-- Nuclear-speed conversion core
+local function instantConvert()
+    local startTime = os.clock()
+    
+    -- Bulk collection
+    local animations = {}
+    for _, obj in ipairs(game:GetDescendants()) do
+        if obj:IsA("Animation") and obj.AnimationId ~= "" then
+            table.insert(animations, obj)
+        end
+    end
+    
+    -- Direct in-place modification
+    local count = 0
+    local total = #animations
+    
+    -- Batch process without yielding
+    for _, anim in ipairs(animations) do
+        count += 1
+        -- Generate new ID (modify this pattern as needed)
+        local newId = "rbxassetid://CONVERTED_" .. HTTP:GenerateGUID(false)
+        anim.AnimationId = newId
+        
+        -- Update status every 100 animations
+        if count % 100 == 0 then
+            statusLabel.Text = string.format("Converted %d/%d", count, total)
+            wait(0) -- Yield briefly to prevent freeze
+        end
+    end
+    
+    statusLabel.Text = string.format("Converted %d animations in %.2fs!", total, os.clock()-startTime)
+    SELECTION:Set(animations)
+end
+
+-- Instant trigger
+convertButton.MouseButton1Click:Connect(instantConvert)
+button.Click:Connect(function() widget.Enabled = not widget.Enabled end)
