@@ -1,0 +1,163 @@
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+
+-- Configuration
+local CYCLE_DURATION = 120 -- Seconds for full day/night cycle
+local SUN_MOON_OFFSET = 35 -- Angle offset between sun and moon
+
+-- Celestial bodies creation
+local function createCelestialBody(name, color, size)
+    local part = Instance.new("Part")
+    part.Name = name
+    part.Color = color
+    part.Material = Enum.Material.Neon
+    part.Size = Vector3.new(size, size, size)
+    part.Shape = Enum.PartType.Ball
+    part.Anchored = true
+    part.CanCollide = false
+    part.CastShadow = false
+    part.Parent = workspace
+    return part
+end
+
+local sun = createCelestialBody("AdvancedSun", Color3.new(1, 0.8, 0.4), 15)
+local moon = createCelestialBody("AdvancedMoon", Color3.new(0.7, 0.8, 1), 10)
+
+-- Initial positioning
+local function updateCelestialPosition(body, angle)
+    local radius = 500
+    body.Position = Vector3.new(
+        math.cos(angle) * radius,
+        math.sin(angle) * radius,
+        0
+    )
+end
+
+-- Environmental effects controller
+local function updateEnvironment(sunHeight)
+    -- Lighting properties
+    Lighting.Brightness = 2.5 - math.clamp(math.abs(sunHeight - 1.5), 0, 2)
+    Lighting.OutdoorAmbient = Color3.new(
+        math.clamp(sunHeight/3, 0.1, 0.3),
+        math.clamp(sunHeight/3, 0.1, 0.3),
+        math.clamp(sunHeight/3, 0.1, 0.3)
+    )
+    
+    -- Skybox transitions
+    Lighting.ClockTime = 24 * (sun.Position.Y + 500) / 1000
+    
+    -- Celestial visibility
+    sun.Transparency = 1 - math.clamp(math.abs(sun.Position.Y)/200, 0, 1)
+    moon.Transparency = 1 - math.clamp(math.abs(moon.Position.Y)/200, 0, 1)
+end
+
+-- Smooth transition system
+local function smoothUpdate()
+    local startTime = os.clock()
+    local baseAngle = 0
+    
+    while true do
+        local elapsed = os.clock() - startTime
+        local progress = (elapsed % CYCLE_DURATION) / CYCLE_DURATION
+        
+        -- Calculate celestial angles
+        local sunAngle = math.rad(progress * 360)
+        local moonAngle = sunAngle + math.rad(SUN_MOON_OFFSET)
+        
+        -- Update positions
+        updateCelestialPosition(sun, sunAngle)
+        updateCelestialPosition(moon, moonAngle)
+        
+        -- Calculate sun height for environment effects
+        local sunHeight = math.sin(sunAngle)
+        updateEnvironment(sunHeight)
+        
+        -- Smooth frame pacing
+        RunService.Heartbeat:Wait()
+    end
+end
+
+-- Initialize system
+coroutine.wrap(smoothUpdate)()
+
+
+
+
+
+
+
+
+
+
+
+1. Installation Steps:
+
+Create a new Script in:
+
+Location: ServerScriptService
+Name: AdvancedDayNightCycle
+Paste the provided code
+
+Add these skyboxes to Lighting:
+
+Sky object
+Atmosphere object
+Clouds (optional)
+
+3. Recommended Lighting Setup:
+
+In Lighting properties:
+
+Technology = ShadowMap
+EnvironmentDiffuseScale = 0.5
+EnvironmentSpecularScale = 0.5
+ExposureCompensation = 0.6
+Add ColorCorrectionEffect:
+
+Brightness = 0.1
+Contrast = 0.1
+Saturation = 0.8
+4. Test the System:
+
+Playtest in Studio
+Verify these features:
+Smooth sun/moon movement
+Gradual lighting transitions
+Proper day/night cycle timing
+Automatic skybox synchronization
+5. Advanced Customization:
+
+For better visuals
+
+-- Add these inside createCelestialBody function:
+local glow = Instance.new("PointLight")
+glow.Brightness = 5
+glow.Range = 100
+glow.Parent = part
+
+For weather effects:
+
+-- Add after environment update section
+local function updateWeather(sunHeight)
+    Lighting.FogColor = Color3.new(
+        math.clamp(0.2 + sunHeight/3, 0.2, 0.4),
+        math.clamp(0.2 + sunHeight/3, 0.2, 0.4),
+        math.clamp(0.3 + sunHeight/3, 0.3, 0.5)
+    )
+    Lighting.FogEnd = 2000 - (500 * math.abs(sunHeight))
+end
+
+Troubleshooting:
+
+If celestial bodies disappear:
+
+Increase CELESTIAL_RADIUS
+Check camera clipping planes
+If lighting looks flat:
+
+Adjust EnvironmentDiffuseScale
+Add SunRays effect
+If cycle stutters:
+
+Reduce CYCLE_DURATION
+Remove other intensive scripts
