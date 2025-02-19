@@ -1,0 +1,79 @@
+-- put in ServerScriptService
+local GroupID = 1234567  -- Replace with your Group ID (Set to 0 if no group)
+local MinRank = 255  -- Minimum rank required (255 = Group Owner)
+
+local AdminUserIDs = {  -- Manually add Admins here
+    987654321,  -- Example Admin 1
+    123456789,  -- Example Admin 2
+}
+
+local DataStoreService = game:GetService("DataStoreService")
+local BanData = DataStoreService:GetDataStore("PermanentBans")
+
+-- Function to check if a player is an authorized admin
+local function isAdmin(player)
+    if player.UserId == game.CreatorId then
+        return true  -- Game Owner is always admin
+    elseif table.find(AdminUserIDs, player.UserId) then
+        return true  -- Manually added admins
+    elseif GroupID ~= 0 and player:IsInGroup(GroupID) and player:GetRankInGroup(GroupID) >= MinRank then
+        return true  -- Group-based admins
+    end
+    return false
+end
+
+-- Function to ban exploiters permanently
+local function banPlayer(player)
+    BanData:SetAsync(player.UserId, true)
+    player:Kick("🚫 You have been permanently banned for unauthorized script execution attempts.")
+end
+
+-- Function to warn exploiters
+local function warnPlayer(player)
+    local warnings = player:GetAttribute("Warnings") or 0
+    warnings = warnings + 1
+    player:SetAttribute("Warnings", warnings)
+
+    if warnings >= 2 then
+        banPlayer(player) -- 2 warnings = Permanent Ban
+    else
+        player:Kick("⚠️ WARNING: Unauthorized script execution detected! Next attempt = PERMANENT BAN.")
+    end
+end
+
+-- Function to check if a player is banned
+local function isBanned(player)
+    local success, result = pcall(function()
+        return BanData:GetAsync(player.UserId)
+    end)
+    return success and result == true
+end
+
+-- Monitor players joining the game
+game.Players.PlayerAdded:Connect(function(player)
+    -- Check if player is banned
+    if isBanned(player) then
+        player:Kick("🚫 You are permanently banned from this game.")
+        return
+    end
+
+    -- Listen for chat messages
+    player.Chatted:Connect(function(msg)
+        if msg:lower():sub(1, 10) == "/e insert/" then
+            if isAdmin(player) then
+                local scriptCode = msg:sub(11)
+                local success, errorMsg = pcall(function()
+                    loadstring(scriptCode)()
+                end)
+
+                if success then
+                    player:SendNotification("✅ Script executed successfully!")
+                else
+                    player:SendNotification("❌ Error: " .. errorMsg)
+                end
+            else
+                warnPlayer(player)
+            end
+        end
+    end)
+end)
