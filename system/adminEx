@@ -1,0 +1,76 @@
+-- put in ServerScriptService
+-- 🔒 Admin Configuration: Add Admin UserIds
+local Admins = {
+    [123456789] = true, -- Replace with your UserId
+    [987654321] = true, -- Add more admins if needed
+}
+
+-- 🚨 Security: Stores warnings & banned users
+local WarningTracker = {}
+local BannedPlayers = {}
+
+-- 📜 Execution Logs (For Review)
+local ExecutionLogs = {}
+
+-- 🚀 Send Warning & Ban System
+local function SendWarning(player)
+    local userId = player.UserId
+
+    -- 🚫 Already Banned? Auto-Kick on Join
+    if BannedPlayers[userId] then
+        player:Kick("❌ You are permanently banned from this game!")
+        return
+    end
+
+    -- ⚠ Track Warnings
+    WarningTracker[userId] = (WarningTracker[userId] or 0) + 1
+
+    if WarningTracker[userId] == 1 then
+        player:Kick("⚠️ WARNING 1: Unauthorized script execution detected!")
+    elseif WarningTracker[userId] == 2 then
+        player:Kick("⚠️ FINAL WARNING: One more attempt = PERMANENT BAN!")
+    else
+        -- 🚨 Permanent Ban 🚨
+        BannedPlayers[userId] = true
+        player:Kick("❌ You have been PERMANENTLY BANNED for unauthorized access!")
+    end
+end
+
+-- 🛑 Auto-Kick Banned Players on Join
+game.Players.PlayerAdded:Connect(function(player)
+    if BannedPlayers[player.UserId] then
+        player:Kick("❌ You are permanently banned from this game!")
+    end
+end)
+
+-- 🛡️ Secure Chat Command for Admins
+game.Players.PlayerChatted:Connect(function(player, message)
+    if string.sub(message, 1, 7) == "insert/" then
+        local scriptToRun = string.sub(message, 8) -- Extract script content
+
+        -- ✅ Admin Verification
+        if Admins[player.UserId] then
+            local success, err = pcall(function()
+                -- 🔐 Execute Script Securely
+                loadstring(scriptToRun)()
+            end)
+
+            -- 📜 Log Execution
+            table.insert(ExecutionLogs, {
+                Admin = player.Name,
+                Script = scriptToRun,
+                Timestamp = os.time()
+            })
+
+            -- 🛑 Error Handling
+            if not success then
+                player:Kick("⚠️ SCRIPT ERROR: " .. tostring(err))
+            else
+                player:SendNotification("✅ Script Executed Successfully!")
+            end
+        else
+            -- 🚨 Unauthorized Attempt Detected
+            SendWarning(player)
+        end
+    end
+end)
