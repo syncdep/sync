@@ -1,0 +1,96 @@
+-- put in ServerScriptService
+local Lighting = game:GetService("Lighting")
+
+-- 🌤 Initial Lighting Settings
+Lighting.Brightness = 2
+Lighting.ClockTime = 12
+Lighting.FogEnd = 1000
+Lighting.FogStart = 0
+Lighting.Ambient = Color3.fromRGB(200, 200, 255)
+Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 255)
+Lighting.GlobalShadows = true
+Lighting.TimeOfDay = "12:00:00"
+
+-- 🌅 Custom Anime-Style Color Gradients
+local Colors = {
+    Dawn = Color3.fromRGB(255, 180, 120), -- Soft orange dawn
+    Morning = Color3.fromRGB(255, 255, 255), -- Neutral white daylight
+    Noon = Color3.fromRGB(240, 255, 255), -- Bright blue daytime
+    Sunset = Color3.fromRGB(255, 120, 100), -- Dramatic warm sunset
+    Night = Color3.fromRGB(20, 20, 50), -- Deep dark blue night
+}
+
+-- ☁️ Atmosphere Setup for Depth Effect
+local Atmosphere = Instance.new("Atmosphere")
+Atmosphere.Parent = Lighting
+Atmosphere.Density = 0.4
+Atmosphere.Offset = 0
+Atmosphere.Color = Colors.Morning
+Atmosphere.Decay = Color3.fromRGB(80, 80, 120)
+
+-- 🎥 Color Correction (Anime Glow Effect)
+local ColorCorrection = Instance.new("ColorCorrectionEffect")
+ColorCorrection.Parent = Lighting
+ColorCorrection.TintColor = Colors.Morning
+ColorCorrection.Brightness = 0.05
+ColorCorrection.Saturation = 0.2
+ColorCorrection.Contrast = 0.1
+
+-- ✨ Add a Starry Night Effect
+local Stars = Instance.new("Sky")
+Stars.Parent = Lighting
+Stars.SkyboxBk = ""
+Stars.SkyboxDn = ""
+Stars.SkyboxFt = ""
+Stars.SkyboxLf = ""
+Stars.SkyboxRt = ""
+Stars.SkyboxUp = "" -- No Skybox Needed
+
+-- 🌕 Moonlight Effect (Custom Night Lighting)
+local MoonLight = Instance.new("PointLight")
+MoonLight.Parent = game.Workspace
+MoonLight.Brightness = 2
+MoonLight.Range = 100
+MoonLight.Shadows = true
+
+-- 🌍 Smooth Transition System
+while true do
+    for i = 0, 24, 0.02 do
+        Lighting.ClockTime = i
+        Lighting.Brightness = math.clamp(2 - math.abs(12 - i) / 6, 0.2, 2)
+
+        -- 🌅 Dynamic Time-Based Lighting Changes
+        if i >= 5 and i < 7 then
+            -- Sunrise Glow
+            Lighting.OutdoorAmbient = Colors.Dawn
+            ColorCorrection.TintColor = Colors.Dawn
+            Atmosphere.Color = Colors.Dawn
+        elseif i >= 7 and i < 12 then
+            -- Daylight
+            Lighting.OutdoorAmbient = Colors.Morning
+            ColorCorrection.TintColor = Colors.Morning
+            Atmosphere.Color = Colors.Morning
+        elseif i >= 12 and i < 17 then
+            -- Noon (Brightest)
+            Lighting.OutdoorAmbient = Colors.Noon
+            ColorCorrection.TintColor = Colors.Noon
+            Atmosphere.Color = Colors.Noon
+        elseif i >= 17 and i < 19 then
+            -- Sunset
+            Lighting.OutdoorAmbient = Colors.Sunset
+            ColorCorrection.TintColor = Colors.Sunset
+            Atmosphere.Color = Colors.Sunset
+        else
+            -- Night
+            Lighting.OutdoorAmbient = Colors.Night
+            ColorCorrection.TintColor = Colors.Night
+            Atmosphere.Color = Colors.Night
+            MoonLight.Brightness = 1.5
+        end
+
+        -- 🌌 Enable/Disable Stars
+        Stars.StarCount = (i > 18 or i < 6) and 200 or 0  -- Stars visible only at night
+
+        wait(0.1) -- Smoother transition speed
+    end
+end
