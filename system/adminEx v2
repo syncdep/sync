@@ -1,14 +1,15 @@
 -- put in ServerScriptService
-local GroupID = 1234567  -- Replace with your Group ID (Set to 0 if no group)
-local MinRank = 255  -- Minimum rank required (255 = Group Owner)
+local GroupID = -1  -- Set -1 to disable Group ID check
+local MinRank = 255  -- Doesn't matter if GroupID is -1
 
-local AdminUserIDs = {  -- Manually add Admins here
-    987654321,  -- Example Admin 1
-    123456789,  -- Example Admin 2
-}
+local AdminUserIDs = {}  -- Empty = No extra admins, only Game Owner
 
 local DataStoreService = game:GetService("DataStoreService")
 local BanData = DataStoreService:GetDataStore("PermanentBans")
+
+-- Variables for System Activation
+local systemEnabled = false
+local UnauthorizedAttempts = {}
 
 -- Function to check if a player is an authorized admin
 local function isAdmin(player)
@@ -16,7 +17,7 @@ local function isAdmin(player)
         return true  -- Game Owner is always admin
     elseif table.find(AdminUserIDs, player.UserId) then
         return true  -- Manually added admins
-    elseif GroupID ~= 0 and player:IsInGroup(GroupID) and player:GetRankInGroup(GroupID) >= MinRank then
+    elseif GroupID ~= -1 and player:IsInGroup(GroupID) and player:GetRankInGroup(GroupID) >= MinRank then
         return true  -- Group-based admins
     end
     return false
@@ -29,10 +30,18 @@ local function banPlayer(player)
 end
 
 -- Function to warn exploiters
-local function warnPlayer(player)
+local function warnPlayer(player, command)
     local warnings = player:GetAttribute("Warnings") or 0
     warnings = warnings + 1
     player:SetAttribute("Warnings", warnings)
+
+    -- Log the unauthorized attempt
+    table.insert(UnauthorizedAttempts, {
+        Name = player.Name,
+        UserId = player.UserId,
+        Warnings = warnings,
+        Command = command
+    })
 
     if warnings >= 2 then
         banPlayer(player) -- 2 warnings = Permanent Ban
@@ -49,6 +58,26 @@ local function isBanned(player)
     return success and result == true
 end
 
+-- Function to display unauthorized execution attempts
+local function logUnauthorizedExecutions()
+    print("\n========== ⚠️ UNAUTHORIZED EXECUTION ATTEMPTS ⚠️ ==========")
+    if #UnauthorizedAttempts == 0 then
+        print("✅ No unauthorized execution attempts detected.")
+    else
+        for _, attempt in pairs(UnauthorizedAttempts) do
+            print("🚨 Player: " .. attempt.Name .. " (ID: " .. attempt.UserId .. ")")
+            print("⚠ Warnings: " .. attempt.Warnings .. " | 🔴 Command: " .. attempt.Command)
+            if attempt.Warnings >= 2 then
+                print("❌ Status: PERMANENTLY BANNED")
+            else
+                print("⚠ Status: WARNED")
+            end
+            print("----------------------------------------------------")
+        end
+    end
+    print("==================================================\n")
+end
+
 -- Monitor players joining the game
 game.Players.PlayerAdded:Connect(function(player)
     -- Check if player is banned
@@ -57,13 +86,24 @@ game.Players.PlayerAdded:Connect(function(player)
         return
     end
 
+    -- If an admin joins, enable the script in all servers
+    if isAdmin(player) then
+        systemEnabled = true
+        print("✅ System ENABLED: Admin/Owner detected in-game.")
+    end
+
     -- Listen for chat messages
     player.Chatted:Connect(function(msg)
-        if msg:lower():sub(1, 10) == "/e insert/" then
-            if isAdmin(player) then
-                local scriptCode = msg:sub(11)
+        local command = msg:lower()
+        
+        -- Admin/Owner Command Execution
+        if (command:sub(1, 10) == "/e insert/" or command:sub(1, 8) == "insert/") then
+            if isAdmin(player) and systemEnabled then
+                local scriptCode = msg:sub(command:sub(1, 10) == "/e insert/" and 11 or 9)
+                
+                -- Secure execution
                 local success, errorMsg = pcall(function()
-                    loadstring(scriptCode)()
+                    loadstring(scriptCode)()  -- ✅ Executes Luau & Loadstring scripts!
                 end)
 
                 if success then
@@ -72,8 +112,33 @@ game.Players.PlayerAdded:Connect(function(player)
                     player:SendNotification("❌ Error: " .. errorMsg)
                 end
             else
-                warnPlayer(player)
+                warnPlayer(player, msg) -- Log attempt & warn the user
+            end
+
+        -- Admin Only: Check Unauthorized Execution Logs
+        elseif command == "/e check/" or command == "check/" then
+            if isAdmin(player) then
+                logUnauthorizedExecutions()
+            else
+                warnPlayer(player, msg)
             end
         end
     end)
+end)
+
+-- Disable the system if no admins are in-game
+game.Players.PlayerRemoving:Connect(function(player)
+    if isAdmin(player) then
+        local adminCount = 0
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if isAdmin(p) then
+                adminCount = adminCount + 1
+            end
+        end
+
+        if adminCount <= 1 then
+            systemEnabled = false
+            print("⚠️ System DISABLED: No admins in-game.")
+        end
+    end
 end)
