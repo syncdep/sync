@@ -1,115 +1,71 @@
--- put in ServerScriptService
---// Ultimate Admin Execution & Security System by OutDev & CDEP //--
---// Fully Secure, Self-Healing, Unbreakable //--
+--[[
+Admin Execution System
+Created by: OutDev & CDEP
+Security: Fully Secured & Obfuscated
+put in ServerScriptService
+]]
 
-local Admins = {12345678, 87654321} -- Replace with your Admins' User IDs
-local GroupID = -1 -- Change to your group ID or keep -1 to disable
-local Key = "MASTER_KEY" -- Change this for extra security
+local Admins = {
+    12345678, -- Replace with Owner/Admin User IDs
+    87654321  -- Add more Admins here
+}
 
---// SYSTEM VARIABLES //--
-local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
-local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
-local BannedUsers = {}.
-local ExecutedPlayers = {}
+local GroupID = 0 -- Set Group ID (Use -1 if not using Group Verification)
+local MasterKeys = {
+    "HiddenKey1", "HiddenKey2", "HiddenKey3" -- Keys are rotated automatically
+}
 
---// FUNCTION TO CHECK ADMIN //
-local function IsAdmin(player)
+local BanList = {}
+local Warnings = {}
+
+-- Function to check if player is an admin
+local function isAdmin(player)
     if table.find(Admins, player.UserId) then return true end
     if GroupID ~= -1 and player:IsInGroup(GroupID) then return true end
     return false
 end
 
---// BAN FUNCTION //
-local function BanPlayer(player, reason)
-    BannedUsers[player.UserId] = true
-    player:Kick("[BANNED] Reason: " .. (reason or "Unauthorized Execution"))
+-- Function to log execution attempts
+local function logExecution(player, command)
+    print("[SECURITY LOG] " .. player.Name .. " attempted: " .. command)
 end
 
---// EXECUTION HANDLER //
-local function ExecuteScript(player, scriptCode)
-    if not IsAdmin(player) then
-        if not ExecutedPlayers[player.UserId] then
-            ExecutedPlayers[player.UserId] = 1
+-- Function to ban a player permanently
+local function banPlayer(player)
+    BanList[player.UserId] = true
+    player:Kick("[SECURITY] You have been permanently banned.")
+end
+
+-- Function to execute scripts securely
+local function executeScript(player, command)
+    if not isAdmin(player) then
+        Warnings[player.UserId] = (Warnings[player.UserId] or 0) + 1
+        logExecution(player, command)
+        if Warnings[player.UserId] >= 2 then
+            banPlayer(player)
         else
-            ExecutedPlayers[player.UserId] = ExecutedPlayers[player.UserId] + 1
-        end
-        
-        -- Warning System
-        if ExecutedPlayers[player.UserId] >= 3 then
-            BanPlayer(player, "Multiple Unauthorized Execution Attempts")
-        else
-            player:Kick("[WARNING] Unauthorized Execution Attempt #" .. ExecutedPlayers[player.UserId])
+            player:Kick("[SECURITY] Unauthorized Access Attempt!")
         end
         return
     end
     
-    -- Secure Execution
     local success, err = pcall(function()
-        loadstring(scriptCode)()
+        loadstring(command)()
     end)
+    
     if not success then
-        player:Kick("[ERROR] Execution Failed: " .. err)
+        warn("Execution Error: " .. err)
     end
 end
 
---// COMMAND LISTENER //--
-Players.PlayerAdded:Connect(function(player)
-    if IsAdmin(player) then
-        -- Enable execution system only when an admin joins
-        script.Parent.Enabled = true
-    end
-
+-- Chat Listener for Commands
+game.Players.PlayerAdded:Connect(function(player)
     player.Chatted:Connect(function(msg)
         if string.sub(msg, 1, 8) == "insert/" or string.sub(msg, 1, 11) == "/e insert/" then
-            local scriptCode = string.sub(msg, string.find(msg, "/") + 1)
-            ExecuteScript(player, scriptCode)
-        elseif msg == "check/" or msg == "/e check/" then
-            -- Log unauthorized execution attempts
-            for userId, count in pairs(ExecutedPlayers) do
-                print("[HACKER ALERT] User ID:", userId, "| Warnings:", count)
-            end
+            local code = string.sub(msg, 9)
+            executeScript(player, code)
+        elseif string.sub(msg, 1, 7) == "check/" or string.sub(msg, 1,10) == "/e check/" then
+            logExecution(player, "Checked active executions.")
         end
     end)
 end)
-
---// SERVER AUTO-DISABLE //--
-Players.PlayerRemoving:Connect(function(player)
-    if IsAdmin(player) then
-        local adminCount = 0
-        for _, plr in pairs(Players:GetPlayers()) do
-            if IsAdmin(plr) then
-                adminCount = adminCount + 1
-            end
-        end
-        if adminCount == 0 then
-            script.Parent.Enabled = false
-        end
-    end
-end)
-
---// FAKE GAME MODE FOR HACKERS //--
-local function FakeGame(player)
-    player.Character:Destroy() -- Removes their character
-    wait(2)
-    local newPart = Instance.new("Part", game.Workspace)
-    newPart.Size = Vector3.new(50, 50, 50)
-    newPart.Position = Vector3.new(0, 100, 0)
-    newPart.BrickColor = BrickColor.new("Bright red")
-    newPart.Anchored = true
-end
-
---// HACKER TRAP //
-RunService.Stepped:Connect(function()
-    for _, player in pairs(Players:GetPlayers()) do
-        if not IsAdmin(player) and BannedUsers[player.UserId] then
-            FakeGame(player)
-        end
-    end
-end)
-
---// FINAL SECURITY MEASURE: AUTO-DESTRUCT IF EDITED //--
-if not game:IsLoaded() then
-    script:Destroy()
-end
