@@ -1,3 +1,4 @@
+--// put in ServerScriptService //--
 local GroupID = -1  -- Set -1 to disable Group ID check
 local MinRank = 255  -- Doesn't matter if GroupID is -1
 
