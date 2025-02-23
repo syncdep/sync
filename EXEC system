@@ -1,0 +1,128 @@
+-- Create an Folder in ReplicatedStorage and Rename it to "EXEC" and Create an Script inside of Folder and Name it "EXEC"
+-- EXEC: Secure Admin Injection System © Copyright Outdev All Right Reserved.
+-- Features: Secure Luau Execution, Admin Control, Anti-Tamper, Liminal Domain, Punishment System
+
+local EXEC = require(game.ReplicatedStorage:WaitForChild("EXEC"))
+
+-- Configuration
+local ownerId = game.CreatorId
+local userIds = {}
+local groupIds = {}
+local LiminalDomainPlaceId = 000000000 -- Replace with actual Liminal Place ID
+local SecurityCode = game:GetService("HttpService"):GenerateGUID(false)
+local Active = false
+
+-- Ban and Warn Tables
+local BannedUsers = {}
+local WarnedUsers = {}
+
+-- Function to check if a player is an admin
+local function isAdmin(player)
+    if player then
+        if player.UserId == ownerId then return true end
+        for _, id in ipairs(userIds) do
+            if player.UserId == id then return true end
+        end
+        for _, group in ipairs(groupIds) do
+            if player:IsInGroup(group) then return true end
+        end
+        return false
+    else
+        return false
+    end
+end
+
+-- Secure System Against Tampering
+local function secureSystem()
+    local success, mt = pcall(getrawmetatable, game)
+    if success and mt then
+        setreadonly(mt, false)
+        local oldNamecall = mt.__namecall
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "IsStudio" or method == "GetDebugId" then
+                return false -- Prevent detection
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+    else
+        warn("[EXEC ERROR]: Failed to access metatable")
+    end
+end
+
+-- Secure Luau Code Execution
+local function executeCommand(player, command)
+    if isAdmin(player) then
+        local scriptCode = command:gsub("exec/", "")
+        local env = {game = game, script = script}
+        local func, err = load(scriptCode, "EXEC_COMMAND", "t", env)
+        if func then
+            local success, result = pcall(func)
+            if not success then
+                warn("[EXEC ERROR]: " .. tostring(result))
+            end
+        else
+            warn("[EXEC ERROR]: " .. tostring(err))
+        end
+    else
+        punishUser(player, "Unauthorized Execution Attempt")
+    end
+end
+
+-- Secure Teleport to Liminal Domain
+local function sendToLiminal(player)
+    BannedUsers[player.UserId] = true
+    player:Kick("You have been banned. Redirecting to Liminal Domain...")
+    task.wait(2)
+    local success = pcall(function()
+        game:GetService("TeleportService"):Teleport(LiminalDomainPlaceId, player)
+    end)
+    if not success then warn("[EXEC ERROR]: Teleport failed.") end
+end
+
+-- Enhanced Punishment System
+local function punishUser(player, reason)
+    WarnedUsers[player.UserId] = (WarnedUsers[player.UserId] or 0) + 1
+    if WarnedUsers[player.UserId] >= 2 then
+        sendToLiminal(player)
+    else
+        player:Kick("Warning " .. WarnedUsers[player.UserId] .. "/2: " .. reason)
+    end
+end
+
+-- Detect Admin Join & Leave
+local function handlePlayerJoin(player)
+    if isAdmin(player) then
+        Active = true
+        print("[EXEC ACTIVATED]: Security Code - " .. SecurityCode)
+    end
+end
+
+game.Players.PlayerAdded:Connect(handlePlayerJoin)
+game.Players.PlayerRemoving:Connect(function(player)
+    if isAdmin(player) then
+        Active = false
+    end
+end)
+
+-- Secure Command Handling
+game.Players.PlayerChatted:Connect(function(player, message)
+    local msg = message:lower()
+    if msg:sub(1, 5) == "exec/" then
+        executeCommand(player, message)
+    elseif msg == "liminal" and isAdmin(player) then
+        sendToLiminal(player)
+    end
+end)
+
+-- Function to reset SecurityCode
+local function resetSecurityCode()
+    SecurityCode = game:GetService("HttpService"):GenerateGUID(false)
+    print("[EXEC]: Security Code reset to " .. SecurityCode)
+end
+
+-- Apply Security
+secureSystem()
+
+return EXEC
