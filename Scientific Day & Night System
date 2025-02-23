@@ -1,0 +1,71 @@
+-- Put in ServerScriptService as Script or LocalScript and Rename it "Scientific Lighting"
+-- Set up the Lighting properties
+local Lighting = game:GetService("Lighting")
+
+-- Define the time of day ranges
+local dawnStart = 6
+local dawnEnd = 9
+local sunriseStart = 9
+local sunriseEnd = 12
+local middayStart = 12
+local middayEnd = 15
+local sunsetStart = 15
+local sunsetEnd = 18
+local duskStart = 18
+local duskEnd = 20
+local nightStart = 20
+local nightEnd = 22
+
+-- Define the Lighting properties for each time of day
+local function updateLighting(time)
+    if time >= nightStart and time <= nightEnd then
+        -- Night
+        Lighting.Brightness = 0.01
+        Lighting.Ambient = Color3.new(0.01, 0.01, 0.01)
+        Lighting.ColorShift_Top = Color3.new(0, 0, 0)
+        Lighting.SunAngularSize = 0
+        Lighting.SkyBox = "Night Sky"
+    elseif time >= duskStart and time <= duskEnd then
+        -- Dusk
+        Lighting.Brightness = 0.05
+        Lighting.Ambient = Color3.new(0.02, 0.02, 0.02)
+        Lighting.ColorShift_Top = Color3.new(0.5, 0.5, 0.5)
+        Lighting.SunAngularSize = 5
+        Lighting.SkyBox = "Night Sky"
+    elseif time >= sunsetStart and time <= sunsetEnd then
+        -- Sunset
+        Lighting.Brightness = 0.1
+        Lighting.Ambient = Color3.new(0.02, 0.02, 0.02)
+        Lighting.ColorShift_Top = Color3.new(0.5, 0.5, 0.5)
+        Lighting.SunAngularSize = 10
+        Lighting.SkyBox = "Night Sky"
+    elseif time >= middayStart and time <= middayEnd then
+        -- Midday
+        Lighting.Brightness = 0.5
+        Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+        Lighting.ColorShift_Top = Color3.new(0.5, 0.5, 0.5)
+        Lighting.SunAngularSize = 10
+        Lighting.SkyBox = "Day Sky"
+    elseif time >= sunriseStart and time <= sunriseEnd then
+        -- Sunrise
+        Lighting.Brightness = 0.1
+        Lighting.Ambient = Color3.new(0.02, 0.02, 0.02)
+        Lighting.ColorShift_Top = Color3.new(0.5, 0.5, 0.5)
+        Lighting.SunAngularSize = 5
+        Lighting.SkyBox = "Day Sky"
+    elseif time >= dawnStart and time <= dawnEnd then
+        -- Dawn
+        Lighting.Brightness = 0.05
+        Lighting.Ambient = Color3.new(0.02, 0.02, 0.02)
+        Lighting.ColorShift_Top = Color3.new(0, 0, 0)
+        Lighting.SunAngularSize = 0
+        Lighting.SkyBox = "Night Sky"
+    end
+end
+
+-- Update the time and lighting properties every second
+while true do
+    local time = Lighting:GetMinutesAfterMidnight()
+    updateLighting(time)
+    task.wait(1)
+end
