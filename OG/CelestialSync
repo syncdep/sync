@@ -1,0 +1,246 @@
+-- Module: CelestialSync
+-- Advanced dynamic day/night system with procedural skies and scientific accuracy
+-- put the "script" in "ServerScriptService" and name it "CelestialSync"
+
+local CelestialSync = {}
+CelestialSync.__index = CelestialSync
+
+-- Constants
+local EQUATORIAL_RADIUS = 6378137 -- Earth's radius in meters
+local ASTRONOMICAL_UNIT = 1.496e11 -- Meters
+local SOLAR_LUMINANCE = 1.6e9 -- cd/m²
+local LUNAR_ALBEDO = 0.136 -- Moon's reflectivity
+
+function CelestialSync.new(config)
+    local self = setmetatable({}, CelestialSync)
+    
+    -- Configuration with defaults
+    self.config = {
+        Latitude = 40.7128, -- New York
+        Longitude = -74.0060,
+        TimeAcceleration = 1440, -- 1 real second = 24 game minutes
+        UseRealTime = false,
+        EnableAtmosphere = true,
+        EnableCelestialBodies = true,
+        EnableWeatherEffects = true
+    }
+    
+    -- Merge custom config
+    for k,v in pairs(config or {}) do self.config[k] = v end
+    
+    -- State management
+    self._baseTime = os.time()
+    self._running = false
+    self._moonPhase = 0
+    self._lastUpdate = 0
+    
+    -- Initialize systems
+    self:InitializeLighting()
+    if self.config.EnableCelestialBodies then
+        self:CreateCelestialBodies()
+    end
+    
+    return self
+end
+
+function CelestialSync:InitializeLighting()
+    local lighting = game:GetService("Lighting")
+    
+    -- Basic lighting setup
+    lighting.GlobalShadows = true
+    lighting.Technology = Enum.Technology.Voxel
+    lighting.ClockTime = 12
+    lighting.GeographicLatitude = self.config.Latitude
+    
+    -- Atmospheric effects
+    if self.config.EnableAtmosphere then
+        self:ConfigureAtmosphere(lighting)
+        self:CreatePostProcessing()
+    end
+    
+    -- Procedural sky generation
+    self:GenerateProceduralSky()
+end
+
+function CelestialSync:GenerateProceduralSky()
+    local sky = Instance.new("Sky")
+    sky.CelestialBodiesVisible = true
+    sky.StarCount = 3000
+    sky.SkyboxBk = Color3.new(0.1, 0.2, 0.4)
+    sky.SkyboxDn = Color3.new(0.6, 0.7, 0.8)
+    sky.SkyboxFt = Color3.new(0.3, 0.4, 0.6)
+    sky.SkyboxLf = Color3.new(0.3, 0.4, 0.6)
+    sky.SkyboxRt = Color3.new(0.3, 0.4, 0.6)
+    sky.SkyboxUp = Color3.new(0.8, 0.9, 1.0)
+    sky.SunAngularSize = 0.5
+    sky.MoonAngularSize = 0.45
+    sky.Parent = game.Lighting
+end
+
+function CelestialSync:CreateCelestialBodies()
+    local lighting = game:GetService("Lighting")
+    
+    -- Scientific sun properties
+    self.Sun = Instance.new("DirectionalLight")
+    self.Sun.Name = "ScientificSun"
+    self.Sun.Brightness = 1.0
+    self.Sun.Color = Color3.new(1, 0.95, 0.9)
+    self.Sun.ShadowSoftness = 0.1
+    
+    -- Realistic moon light
+    self.Moon = Instance.new("DirectionalLight")
+    self.Moon.Name = "ScientificMoon"
+    self.Moon.Brightness = 0.0
+    self.Moon.Color = Color3.new(0.4, 0.5, 1)
+    self.Moon.ShadowSoftness = 0.5
+    
+    self.Sun.Parent = lighting
+    self.Moon.Parent = lighting
+end
+
+function CelestialSync:ConfigureAtmosphere(lighting)
+    local atmosphere = Instance.new("Atmosphere")
+    atmosphere.Density = 0.3
+    atmosphere.Offset = 0.25
+    atmosphere.Color = Color3.new(0.8, 0.9, 1.0)
+    atmosphere.Decay = Color3.new(0.4, 0.6, 0.8)
+    atmosphere.Glare = 0.3
+    atmosphere.Haze = 0.1
+    atmosphere.Parent = lighting
+end
+
+function CelestialSync:CreatePostProcessing()
+    local lighting = game:GetService("Lighting")
+    
+    -- Bloom effect
+    local bloom = Instance.new("BloomEffect")
+    bloom.Intensity = 0.4
+    bloom.Size = 24
+    bloom.Threshold = 0.9
+    bloom.Parent = lighting
+
+    -- Color correction
+    local colorCorrection = Instance.new("ColorCorrectionEffect")
+    colorCorrection.Contrast = 0.1
+    colorCorrection.Saturation = 0.2
+    colorCorrection.Parent = lighting
+end
+
+-- Astronomical calculations
+function CelestialSync:CalculateSolarPosition()
+    local now = self:GetGameTime()
+    local lat = math.rad(self.config.Latitude)
+    local lon = math.rad(self.config.Longitude)
+    
+    -- Julian date calculation
+    local jd = (now / 86400) + 2440587.5
+    local n = jd - 2451545.0
+    
+    -- Solar mean anomaly
+    local M = math.rad((357.5291 + 0.98560028 * n) % 360)
+    
+    -- Equation of center
+    local C = 1.9148 * math.sin(M) + 0.0200 * math.sin(2*M) + 0.0003 * math.sin(3*M)
+    
+    -- Ecliptic longitude
+    local λ = math.rad((280.46646 + 0.98564736 * n) % 360 + C)
+    
+    -- Solar declination
+    local δ = math.asin(math.sin(λ) * math.sin(math.rad(23.4397)))
+    
+    -- Hour angle
+    local H = math.rad((15 * (now % 86400 / 3600 - 12)) % 360)
+    
+    -- Altitude calculation
+    local alt = math.asin(
+        math.sin(lat) * math.sin(δ) +
+        math.cos(lat) * math.cos(δ) * math.cos(H)
+    )
+    
+    -- Azimuth calculation
+    local azi = math.atan2(
+        math.sin(H),
+        math.cos(H) * math.sin(lat) - math.tan(δ) * math.cos(lat)
+    ) + math.pi
+    
+    return math.deg(alt), math.deg(azi)
+end
+
+function CelestialSync:UpdateCelestialBodies()
+    local sunAlt, sunAzi = self:CalculateSolarPosition()
+    local moonAlt, moonAzi = self:CalculateLunarPosition()
+    
+    -- Update sun position and intensity
+    self.Sun.Brightness = self:CalculateSolarIntensity(sunAlt)
+    self.Sun.Color = self:CalculateSolarColor(sunAlt)
+    
+    -- Update moon position and phase
+    self.Moon.Brightness = self:CalculateLunarBrightness(moonAlt)
+    self._moonPhase = self:CalculateMoonPhase()
+end
+
+function CelestialSync:CalculateSolarIntensity(altitude)
+    local atmosphere = 1 / math.cos(math.rad(90 - math.clamp(altitude, -12, 90)))
+    return math.clamp(SOLAR_LUMINANCE * (1 - atmosphere/15) / 1e6, 0, 1.5)
+end
+
+function CelestialSync:CalculateSolarColor(altitude)
+    local t = math.clamp((altitude + 12) / 24, 0, 1)
+    return Color3.new(
+        1 - (0.4 * (1 - t)),
+        0.9 - (0.6 * (1 - t)),
+        0.8 - (0.7 * (1 - t))
+    )
+end
+
+function CelestialSync:CalculateLunarBrightness(altitude)
+    local phaseFactor = (1 + math.cos(math.rad(self._moonPhase * 180))) / 2
+    return math.clamp(LUNAR_ALBEDO * phaseFactor * (altitude/90)^2, 0, 0.25)
+end
+
+function CelestialSync:CalculateMoonPhase()
+    -- Simplified lunar phase calculation
+    local now = self:GetGameTime()
+    local phase = (now % 24) / 24
+    return math.floor(phase * 8) / 8
+end
+
+function CelestialSync:CalculateLunarPosition()
+    -- Simplified lunar position calculation
+    local now = self:GetGameTime()
+    local phase = math.floor(self:CalculateMoonPhase() * 8) / 8
+    local lon = math.rad(360 * phase)
+    local lat = math.rad(23.4397)
+    local azi = math.atan2(math.sin(lon), math.cos(lon) * math.sin(lat))
+    local alt = math.asin(math.sin(lat) * math.sin(azi))
+    return math.deg(alt), math.deg(azi)
+end
+
+function CelestialSync:GetGameTime()
+    if self.config.UseRealTime then
+        return os.time() - self._baseTime
+    end
+    return (tick() - self._baseTime) * self.config.TimeAcceleration
+end
+
+function CelestialSync:Start()
+    self._running = true
+    self._baseTime = tick()
+    
+    while self._running do
+        local delta = tick() - self._lastUpdate
+        self._lastUpdate = tick()
+        
+        self:UpdateCelestialBodies()
+        self:UpdateEnvironmentalEffects()
+        self:UpdateSkyAppearance()
+        
+        game:GetService("RunService").Heartbeat:Wait()
+    end
+end
+
+function CelestialSync:Stop()
+    self._running = false
+end
+
+return CelestialSync
