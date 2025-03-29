@@ -3,3 +3,5 @@ Create a fully functional Roblox system script that supports both mobile and PC 
 Additionally, there will be an "X" icon next to the textbox. Clicking on this icon will change it to an "O", indicating that the user is now in editing mode. In this mode, the user can drag and move the buttons, as well as delete them by clicking on the small "X" button attached to each key button. Once the user is done editing, they can click on the "O" icon to return to normal mode, where the buttons will be arranged as edited.
 
 Finally, there will be a save data store feature that will ensure that the user's buttons remain in place even if they leave and rejoin the game. This will maintain the arrangement of the buttons as edited by the user.
+
+With this save data store feature, users can now customize their button layout to their liking without the fear of losing their changes. Whether they exit the game momentarily or come back after a long break, their preferred button arrangement will be preserved. This not only enhances the user experience by providing convenience and personalization but also allows for a seamless transition back into the game without any disruptions.
