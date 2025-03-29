@@ -1,0 +1,5 @@
+Create a fully functional Roblox system script that supports both mobile and PC devices. When a player types "A" in the textbox located in the top left corner, a new button named "A" will appear in the middle of the screen. This button will correspond to the keybind "A". When the user clicks on this button, it will trigger the action associated with the key "A", which in this case is moving left in the WASD controls.
+
+Additionally, there will be an "X" icon next to the textbox. Clicking on this icon will change it to an "O", indicating that the user is now in editing mode. In this mode, the user can drag and move the buttons, as well as delete them by clicking on the small "X" button attached to each key button. Once the user is done editing, they can click on the "O" icon to return to normal mode, where the buttons will be arranged as edited.
+
+Finally, there will be a save data store feature that will ensure that the user's buttons remain in place even if they leave and rejoin the game. This will maintain the arrangement of the buttons as edited by the user.
