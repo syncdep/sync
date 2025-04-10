@@ -3,3 +3,23 @@ Create a realistic body camera system for R15 character models, where the camera
 The camera should start with a blurred effect, simulating the player's vision adjusting to the environment, and then slowly transition to a clear view, revealing the player's character model.
 
 Implement a camera shake effect that mimics real-life camera movement, taking into account the player's movements, such as walking, running, or jumping, to create a more immersive experience.
+
+
+
+
+
+Develop a realistic body camera system for R15 character models, where the player's perspective is simulated through a first-person viewpoint. 
+
+Upon spawning, the camera view is blurred, with a gradual clearing effect that takes approximately 2-3 seconds to fully resolve, allowing the player to see their character's body. 
+
+Implement a camera shake effect that mimics real-life movement, with subtle vibrations and jolts when the player walks, runs, or jumps. The camera movement should be smooth and responsive, with a slight delay to simulate human reaction time.
+
+The camera system should only support R15 character models, with optimized performance for low-end and high-end devices. 
+
+Ensure the camera view is properly aligned with the character's head and body, with correct occlusion and collision detection to prevent the camera from clipping through solid objects. 
+
+Add support for various camera settings, such as field of view, sensitivity, and zoom, to allow players to customize their experience. 
+
+The camera system should be compatible with existing R15 character animations and movements, with seamless integration into the game's core mechanics. 
+
+Optimize the camera system for performance, with a target frame rate of 60 FPS on mid-range hardware, and ensure that it does not cause significant
