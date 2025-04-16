@@ -1,0 +1,55 @@
+--- LocalScript > Name it "UnderwaterEffect" ServiceScriptService or PlayerScripts
+
+-- Get the player's character
+local player = game.Players.LocalPlayer
+local character = player.Character
+
+-- Create a new script that will handle the underwater effect
+local underwaterEffect = script.Parent
+
+-- Define the underwater effect properties
+local underwaterColor = Color3.new(0.2, 0.4, 1) -- blue-ish color
+local underwaterBlur = 5 -- amount of blur
+local underwaterFade = 0.5 -- fade amount
+
+-- Function to check if the player is underwater
+local function isUnderwater()
+    -- Get the player's character's head
+    local head = character:FindFirstChild("Head")
+
+    -- If the head is submerged in water, return true
+    if head and head.Position.y < 0 then
+        return true
+    end
+
+    -- If the player is not underwater, return false
+    return false
+end
+
+-- Function to apply the underwater effect
+local function applyUnderwaterEffect()
+    -- Get the camera object
+    local camera = game.Workspace.CurrentCamera
+
+    -- Check if the player is underwater
+    if isUnderwater() then
+        -- Apply the underwater effect
+        camera.FieldOfView = underwaterBlur
+        camera.FogColor = underwaterColor
+        camera.FogStart = -10
+        camera.FogEnd = 10
+        camera.FadeDuration = underwaterFade
+    else
+        -- Remove the underwater effect
+        camera.FieldOfView = 60
+        camera.FogColor = Color3.new(1, 1, 1)
+        camera.FogStart = 0
+        camera.FogEnd = 0
+        camera.FadeDuration = 0
+    end
+end
+
+-- Connect the applyUnderwaterEffect function to the RenderStepped event
+game:GetService("RunService").RenderStepped:Connect(function(dt)
+    applyUnderwaterEffect()
+end)
